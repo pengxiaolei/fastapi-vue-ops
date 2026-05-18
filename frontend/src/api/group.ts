@@ -1,24 +1,46 @@
-import request from './request'
+import { postAction } from './request'
 import type { Group, GroupCreate, GroupUpdate } from '@/types/machine'
 
+const API_BASE = '/groups'
+
 export const groupApi = {
+  /**
+   * 获取分组列表
+   * action: group.list
+   */
   getGroups: (params?: { skip?: number; limit?: number }) => {
-    return request.get<any, Group[]>('/groups', { params })
+    return postAction<Group[]>(API_BASE, 'group.list', params)
   },
 
+  /**
+   * 获取分组详情
+   * action: group.get
+   */
   getGroup: (id: number) => {
-    return request.get<any, Group>(`/groups/${id}`)
+    return postAction<Group>(API_BASE, 'group.get', { id })
   },
 
+  /**
+   * 创建分组
+   * action: group.create
+   */
   createGroup: (data: GroupCreate) => {
-    return request.post<any, Group>('/groups', data)
+    return postAction<Group>(API_BASE, 'group.create', data)
   },
 
+  /**
+   * 更新分组
+   * action: group.update
+   */
   updateGroup: (id: number, data: GroupUpdate) => {
-    return request.put<any, Group>(`/groups/${id}`, data)
+    return postAction<Group>(API_BASE, 'group.update', { id, ...data })
   },
 
+  /**
+   * 删除分组
+   * action: group.delete
+   */
   deleteGroup: (id: number) => {
-    return request.delete<any, { success: boolean; message: string }>(`/groups/${id}`)
+    return postAction<{ success: boolean; message: string }>(API_BASE, 'group.delete', { id })
   }
 }

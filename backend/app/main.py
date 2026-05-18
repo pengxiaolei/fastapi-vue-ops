@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=settings.cors_allow_headers,
 )
 
-# 注册API路由
+# 注册API路由 - 统一使用 POST
 app.include_router(machines.router, prefix="/api/v1/machines", tags=["机器管理"])
 app.include_router(groups.router, prefix="/api/v1/groups", tags=["分组管理"])
 app.include_router(tags.router, prefix="/api/v1/tags", tags=["标签管理"])
@@ -34,6 +34,7 @@ def health_check():
         "app_name": settings.app_name,
         "version": settings.app_version,
         "debug": settings.debug,
+        "api_style": "统一 POST 接口",
     }
 
 

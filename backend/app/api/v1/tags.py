@@ -1,66 +1,64 @@
 from typing import List
-
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.schemas.common import ApiRequest, ApiResponse
 from app.schemas.machine import TagCreate, TagUpdate, TagResponse
 from app.services.tag_service import TagService
 
 router = APIRouter()
 
 
-@router.get("", response_model=List[TagResponse], summary="获取标签列表")
-def get_tags(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+@router.post("", response_model=ApiResponse)
+async def tag_operations(
+    request: ApiRequest[dict],
     db: Session = Depends(get_db),
 ):
-    """获取所有标签列表"""
-    tags = TagService.get_tags(db, skip=skip, limit=limit)
-    return tags
+    """
+    标签管理统一入口
 
+    action 功能标识:
+    - tag.list: 获取标签列表
+    - tag.get: 获取标签详情
+    - tag.create: 创建标签
+    - tag.update: 更新标签
+    - tag.delete: 删除标签
+    """
+    action = request.action
+    data = request.data or {}
 
-@router.get("/{tag_id}", response_model=TagResponse, summary="获取标签详情")
-def get_tag(tag_id: int, db: Session = Depends(get_db)):
-    """根据ID获取标签详情"""
-    tag = TagService.get_tag(db, tag_id)
-    if not tag:
-        raise HTTPException(status_code=404, detail="标签不存在")
-    return tag
+    # 获取标签列表
+    if action == "tag.list":
+        skip = data.get("skip", 0)
+        limit = data.get("limit", 100)
+        tags = TagService.get_tags(db, skip=skip, limit=limit)
+        return ApiResponse.ok(data=tags, action=action)
 
+    # 获取标签详情
+    elif action == "tag.get":
+        tag_id = data.get("id")
+        tag = TagService.get_tag(db, tag_id)
+        return ApiResponse.ok(data=tag, action=action)
 
-@router.post("", response_model=TagResponse, status_code=201, summary="创建标签")
-def create_tag(tag_in: TagCreate, db: Session = Depends(get_db)):
-    """创建新标签"""
-    # 检查标签名称是否已存在
-    existing = TagService.get_tag_by_name(db, tag_in.name)
-    if existing:
-        raise HTTPException(status_code=400, detail="标签名称已存在")
+    # 创建标签
+    elif action == "tag.create":
+        tag_data = TagCreate(**data)
+        tag = TagService.create_tag(db, tag_data)
+        return ApiResponse.ok(data=tag, message="创建成功", action=action)
 
-    tag = TagService.create_tag(db, tag_in)
-    return tag
+    # 更新标签
+    elif action == "tag.update":
+        tag_id = data.get("id")
+        update_data = TagUpdate(**{k: v for k, v in data.items() if k != "id"})
+        tag = TagService.update_tag(db, tag_id, update_data)
+        return ApiResponse.ok(data=tag, message="更新成功", action=action)
 
+    # 删除标签
+    elif action == "tag.delete":
+        tag_id = data.get("id")
+        TagService.delete_tag(db, tag_id)
+        return ApiResponse.ok(message="删除成功", action=action)
 
-@router.put("/{tag_id}", response_model=TagResponse, summary="更新标签")
-def update_tag(tag_id: int, tag_in: TagUpdate, db: Session = Depends(get_db)):
-    """更新标签信息"""
-    # 如果更新名称，检查是否与其他标签冲突
-    if tag_in.name:
-        existing = TagService.get_tag_by_name(db, tag_in.name)
-        if existing and existing.id != tag_id:
-            raise HTTPException(status_code=400, detail="标签名称已存在")
-
-    tag = TagService.update_tag(db, tag_id, tag_in)
-    if not tag:
-        raise HTTPException(status_code=404, detail="标签不存在")
-    return tag
-
-
-@router.delete("/{tag_id}", summary="删除标签")
-def delete_tag(tag_id: int, db: Session = Depends(get_db)):
-    """删除标签（软删除）"""
-    success = TagService.delete_tag(db, tag_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="标签不存在")
-    return {"success": True, "message": "删除成功"}
+    else:
+        return ApiResponse.error(message=f"未知的操作类型: {action}", code=400, action=action)

@@ -1,14 +1,12 @@
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.schemas.common import ApiRequest, ApiResponse
 from app.schemas.machine import (
     MachineCreate,
     MachineUpdate,
     MachineResponse,
-    MachineDetailResponse,
     MachineListResponse,
     ConnectionTestRequest,
     ConnectionTestResponse,
@@ -19,149 +17,151 @@ from app.services.machine_service import MachineService
 router = APIRouter()
 
 
-@router.get("", response_model=MachineListResponse, summary="获取机器列表")
-def get_machines(
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-    keyword: Optional[str] = Query(None, description="搜索关键词（机器名称/主机名）"),
-    status: Optional[str] = Query(None, description="机器状态筛选"),
-    environment: Optional[str] = Query(None, description="环境筛选"),
+@router.post("", response_model=ApiResponse[MachineListResponse])
+async def machine_operations(
+    request: ApiRequest[dict],
     db: Session = Depends(get_db),
 ):
-    """获取机器列表，支持分页和筛选"""
-    skip = (page - 1) * page_size
-    machines, total = MachineService.get_machines(
-        db, skip=skip, limit=page_size, keyword=keyword, status=status, environment=environment
-    )
+    """
+    机器管理统一入口
 
-    total_pages = (total + page_size - 1) // page_size
+    action 功能标识:
+    - machine.list: 获取机器列表
+    - machine.get: 获取机器详情
+    - machine.create: 创建机器
+    - machine.update: 更新机器
+    - machine.delete: 删除机器
+    - machine.test_connection: 测试连接（不保存）
+    - machine.test_saved_connection: 测试已保存机器连接
+    - machine.refresh_status: 刷新机器状态
+    - machine.add_tag: 添加标签到机器
+    - machine.remove_tag: 移除机器标签
+    - machine.add_to_group: 添加机器到分组
+    - machine.remove_from_group: 从分组移除机器
+    """
+    action = request.action
+    data = request.data or {}
 
-    return {
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "total_pages": total_pages,
-        "data": machines,
-    }
+    # 获取机器列表
+    if action == "machine.list":
+        page = data.get("page", 1)
+        page_size = data.get("page_size", 20)
+        keyword = data.get("keyword")
+        status = data.get("status")
+        environment = data.get("environment")
 
+        skip = (page - 1) * page_size
+        machines, total = MachineService.get_machines(
+            db, skip=skip, limit=page_size, keyword=keyword,
+            status=status, environment=environment
+        )
 
-@router.get("/{machine_id}", response_model=MachineDetailResponse, summary="获取机器详情")
-def get_machine(machine_id: int, db: Session = Depends(get_db)):
-    """根据ID获取机器详情"""
-    machine = MachineService.get_machine(db, machine_id)
-    if not machine:
-        raise HTTPException(status_code=404, detail="机器不存在")
-    return machine
+        result = MachineListResponse(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=(total + page_size - 1) // page_size,
+            data=machines
+        )
+        return ApiResponse.ok(data=result, action=action)
 
+    # 获取机器详情
+    elif action == "machine.get":
+        machine_id = data.get("id")
+        machine = MachineService.get_machine(db, machine_id)
+        return ApiResponse.ok(data=machine, action=action)
 
-@router.post("", response_model=MachineResponse, status_code=201, summary="创建机器")
-def create_machine(machine_in: MachineCreate, db: Session = Depends(get_db)):
-    """创建新机器"""
-    machine = MachineService.create_machine(db, machine_in)
-    return machine
+    # 创建机器
+    elif action == "machine.create":
+        machine_data = MachineCreate(**data)
+        machine = MachineService.create_machine(db, machine_data)
+        return ApiResponse.ok(data=machine, message="创建成功", action=action)
 
+    # 更新机器
+    elif action == "machine.update":
+        machine_id = data.get("id")
+        update_data = MachineUpdate(**{k: v for k, v in data.items() if k != "id"})
+        machine = MachineService.update_machine(db, machine_id, update_data)
+        return ApiResponse.ok(data=machine, message="更新成功", action=action)
 
-@router.put("/{machine_id}", response_model=MachineResponse, summary="更新机器")
-def update_machine(machine_id: int, machine_in: MachineUpdate, db: Session = Depends(get_db)):
-    """更新机器信息"""
-    machine = MachineService.update_machine(db, machine_id, machine_in)
-    if not machine:
-        raise HTTPException(status_code=404, detail="机器不存在")
-    return machine
+    # 删除机器
+    elif action == "machine.delete":
+        machine_id = data.get("id")
+        MachineService.delete_machine(db, machine_id)
+        return ApiResponse.ok(message="删除成功", action=action)
 
+    # 测试连接（不保存）
+    elif action == "machine.test_connection":
+        conn_request = ConnectionTestRequest(**data)
+        success, message, sys_info = MachineService.test_connection(
+            hostname=conn_request.hostname,
+            port=conn_request.port,
+            username=conn_request.username,
+            auth_type=conn_request.auth_type,
+            password=getattr(conn_request, "password", None),
+            private_key=getattr(conn_request, "private_key", None),
+        )
 
-@router.delete("/{machine_id}", summary="删除机器")
-def delete_machine(machine_id: int, db: Session = Depends(get_db)):
-    """删除机器（软删除）"""
-    success = MachineService.delete_machine(db, machine_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="机器不存在")
-    return {"success": True, "message": "删除成功"}
+        result = ConnectionTestResponse(
+            success=success,
+            message=message,
+            **sys_info
+        )
+        return ApiResponse.ok(data=result, action=action)
 
+    # 测试已保存机器连接
+    elif action == "machine.test_saved_connection":
+        machine_id = data.get("id")
+        success, message, sys_info = MachineService.test_machine_connection(db, machine_id)
+        result = ConnectionTestResponse(
+            success=success,
+            message=message,
+            **sys_info
+        )
+        return ApiResponse.ok(data=result, action=action)
 
-@router.post("/test-connection", response_model=ConnectionTestResponse, summary="测试SSH连接")
-def test_connection(request: ConnectionTestRequest):
-    """测试SSH连接（不保存机器信息）"""
-    success, message, system_info = MachineService.test_connection(
-        hostname=request.hostname,
-        port=request.port,
-        username=request.username,
-        auth_type=request.auth_type,
-        password=request.password,
-        private_key=request.private_key,
-    )
+    # 刷新机器状态
+    elif action == "machine.refresh_status":
+        machine_id = data.get("id")
+        success, message = MachineService.refresh_machine_status(db, machine_id)
+        machine = MachineService.get_machine(db, machine_id)
+        result = MachineStatusResponse(
+            success=success,
+            message=message,
+            status=machine.status if machine else None,
+            cpu_usage=machine.cpu_usage if machine else None,
+            memory_usage=machine.memory_usage if machine else None,
+            disk_usage=machine.disk_usage if machine else None,
+        )
+        return ApiResponse.ok(data=result, action=action)
 
-    return {
-        "success": success,
-        "message": message,
-        **system_info,
-    }
+    # 添加标签到机器
+    elif action == "machine.add_tag":
+        machine_id = data.get("machine_id")
+        tag_id = data.get("tag_id")
+        MachineService.add_tag_to_machine(db, machine_id, tag_id)
+        return ApiResponse.ok(message="添加标签成功", action=action)
 
+    # 移除机器标签
+    elif action == "machine.remove_tag":
+        machine_id = data.get("machine_id")
+        tag_id = data.get("tag_id")
+        MachineService.remove_tag_from_machine(db, machine_id, tag_id)
+        return ApiResponse.ok(message="移除标签成功", action=action)
 
-@router.post("/{machine_id}/test-connection", response_model=ConnectionTestResponse, summary="测试机器连接")
-def test_machine_connection(machine_id: int, db: Session = Depends(get_db)):
-    """测试已保存机器的SSH连接"""
-    success, message, system_info = MachineService.test_machine_connection(db, machine_id)
-    if not success and "不存在" in message:
-        raise HTTPException(status_code=404, detail=message)
+    # 添加机器到分组
+    elif action == "machine.add_to_group":
+        machine_id = data.get("machine_id")
+        group_id = data.get("group_id")
+        MachineService.add_machine_to_group(db, machine_id, group_id)
+        return ApiResponse.ok(message="添加到分组成功", action=action)
 
-    return {
-        "success": success,
-        "message": message,
-        **system_info,
-    }
+    # 从分组移除机器
+    elif action == "machine.remove_from_group":
+        machine_id = data.get("machine_id")
+        group_id = data.get("group_id")
+        MachineService.remove_machine_from_group(db, machine_id, group_id)
+        return ApiResponse.ok(message="从分组移除成功", action=action)
 
-
-@router.post("/{machine_id}/refresh-status", response_model=MachineStatusResponse, summary="刷新机器状态")
-def refresh_machine_status(machine_id: int, db: Session = Depends(get_db)):
-    """刷新机器状态，获取最新的资源使用情况"""
-    machine = MachineService.get_machine(db, machine_id)
-    if not machine:
-        raise HTTPException(status_code=404, detail="机器不存在")
-
-    success, message = MachineService.refresh_machine_status(db, machine_id)
-
-    return {
-        "success": success,
-        "message": message,
-        "status": machine.status,
-        "cpu_usage": machine.cpu_usage,
-        "memory_usage": machine.memory_usage,
-        "disk_usage": machine.disk_usage,
-    }
-
-
-@router.post("/{machine_id}/tags/{tag_id}", summary="给机器添加标签")
-def add_tag_to_machine(machine_id: int, tag_id: int, db: Session = Depends(get_db)):
-    """给机器添加标签"""
-    success = MachineService.add_tag_to_machine(db, machine_id, tag_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="机器或标签不存在")
-    return {"success": True, "message": "添加标签成功"}
-
-
-@router.delete("/{machine_id}/tags/{tag_id}", summary="移除机器标签")
-def remove_tag_from_machine(machine_id: int, tag_id: int, db: Session = Depends(get_db)):
-    """移除机器的标签"""
-    success = MachineService.remove_tag_from_machine(db, machine_id, tag_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="机器或标签不存在")
-    return {"success": True, "message": "移除标签成功"}
-
-
-@router.post("/{machine_id}/groups/{group_id}", summary="将机器添加到分组")
-def add_machine_to_group(machine_id: int, group_id: int, db: Session = Depends(get_db)):
-    """将机器添加到指定分组"""
-    success = MachineService.add_machine_to_group(db, machine_id, group_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="机器或分组不存在")
-    return {"success": True, "message": "添加到分组成功"}
-
-
-@router.delete("/{machine_id}/groups/{group_id}", summary="将机器从分组移除")
-def remove_machine_from_group(machine_id: int, group_id: int, db: Session = Depends(get_db)):
-    """将机器从指定分组移除"""
-    success = MachineService.remove_machine_from_group(db, machine_id, group_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="机器或分组不存在")
-    return {"success": True, "message": "从分组移除成功"}
+    else:
+        return ApiResponse.error(message=f"未知的操作类型: {action}", code=400, action=action)

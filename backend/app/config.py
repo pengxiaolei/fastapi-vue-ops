@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     debug: bool = True
     # 服务配置
     host: str = "0.0.0.0"
-    port: int = 8000
+    port: int = 8080
     workers: int = 1
     # 数据库配置
     database_url: str = "sqlite:///./devops.db"
