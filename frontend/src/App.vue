@@ -1,9 +1,7 @@
 <template>
-  <el-config-provider>
-    <div id="app">
-      <router-view />
-    </div>
-  </el-config-provider>
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
 <script setup lang="ts">

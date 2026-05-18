@@ -1,11 +1,15 @@
+"""
+标签管理 API 层
+只负责路由和参数处理，业务逻辑委托给 Logic 层
+"""
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.machine import TagCreate, TagUpdate, TagResponse
-from app.services.tag_service import TagService
+from app.schemas.machine import TagCreate, TagResponse
+from app.logic.tag_logic import TagLogic
 
 router = APIRouter()
 
@@ -17,10 +21,12 @@ async def get_tag_list(
     db: Session = Depends(get_db),
 ):
     """获取所有标签列表"""
-    skip = params.get("skip", 0)
-    limit = params.get("limit", 100)
-    tags = TagService.get_tags(db, skip=skip, limit=limit)
-    return ApiResponse.ok(data=tags, action="tag.list")
+    result = TagLogic.get_tag_list(
+        db,
+        skip=params.get("skip", 0),
+        limit=params.get("limit", 100),
+    )
+    return ApiResponse.ok(data=result, action="tag.list")
 
 
 # ==================== 获取标签详情 ====================
@@ -30,9 +36,8 @@ async def get_tag_detail(
     db: Session = Depends(get_db),
 ):
     """根据ID获取标签详情"""
-    tag_id = params.get("id")
-    tag = TagService.get_tag(db, tag_id)
-    return ApiResponse.ok(data=tag, action="tag.get")
+    result = TagLogic.get_tag_detail(db, params.get("id"))
+    return ApiResponse.ok(data=result, action="tag.get")
 
 
 # ==================== 创建标签 ====================
@@ -42,8 +47,8 @@ async def create_tag(
     db: Session = Depends(get_db),
 ):
     """创建新标签"""
-    tag = TagService.create_tag(db, data)
-    return ApiResponse.ok(data=tag, message="创建成功", action="tag.create")
+    result = TagLogic.create_tag(db, data)
+    return ApiResponse.ok(data=result, message="创建成功", action="tag.create")
 
 
 # ==================== 更新标签 ====================
@@ -53,10 +58,8 @@ async def update_tag(
     db: Session = Depends(get_db),
 ):
     """更新标签信息"""
-    tag_id = data.get("id")
-    update_data = TagUpdate(**{k: v for k, v in data.items() if k != "id"})
-    tag = TagService.update_tag(db, tag_id, update_data)
-    return ApiResponse.ok(data=tag, message="更新成功", action="tag.update")
+    result = TagLogic.update_tag(db, data.get("id"), data)
+    return ApiResponse.ok(data=result, message="更新成功", action="tag.update")
 
 
 # ==================== 删除标签 ====================
@@ -66,6 +69,5 @@ async def delete_tag(
     db: Session = Depends(get_db),
 ):
     """删除标签（软删除）"""
-    tag_id = params.get("id")
-    TagService.delete_tag(db, tag_id)
-    return ApiResponse.ok(message="删除成功", action="tag.delete")
+    result = TagLogic.delete_tag(db, params.get("id"))
+    return ApiResponse.ok(message=result["message"], action="tag.delete")

@@ -1,11 +1,15 @@
+"""
+分组管理 API 层
+只负责路由和参数处理，业务逻辑委托给 Logic 层
+"""
 from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.common import ApiResponse
-from app.schemas.machine import GroupCreate, GroupUpdate, GroupResponse
-from app.services.group_service import GroupService
+from app.schemas.machine import GroupCreate, GroupResponse
+from app.logic.group_logic import GroupLogic
 
 router = APIRouter()
 
@@ -17,10 +21,12 @@ async def get_group_list(
     db: Session = Depends(get_db),
 ):
     """获取所有分组列表"""
-    skip = params.get("skip", 0)
-    limit = params.get("limit", 100)
-    groups = GroupService.get_groups(db, skip=skip, limit=limit)
-    return ApiResponse.ok(data=groups, action="group.list")
+    result = GroupLogic.get_group_list(
+        db,
+        skip=params.get("skip", 0),
+        limit=params.get("limit", 100),
+    )
+    return ApiResponse.ok(data=result, action="group.list")
 
 
 # ==================== 获取分组详情 ====================
@@ -30,9 +36,8 @@ async def get_group_detail(
     db: Session = Depends(get_db),
 ):
     """根据ID获取分组详情"""
-    group_id = params.get("id")
-    group = GroupService.get_group(db, group_id)
-    return ApiResponse.ok(data=group, action="group.get")
+    result = GroupLogic.get_group_detail(db, params.get("id"))
+    return ApiResponse.ok(data=result, action="group.get")
 
 
 # ==================== 创建分组 ====================
@@ -42,8 +47,8 @@ async def create_group(
     db: Session = Depends(get_db),
 ):
     """创建新分组"""
-    group = GroupService.create_group(db, data)
-    return ApiResponse.ok(data=group, message="创建成功", action="group.create")
+    result = GroupLogic.create_group(db, data)
+    return ApiResponse.ok(data=result, message="创建成功", action="group.create")
 
 
 # ==================== 更新分组 ====================
@@ -53,10 +58,8 @@ async def update_group(
     db: Session = Depends(get_db),
 ):
     """更新分组信息"""
-    group_id = data.get("id")
-    update_data = GroupUpdate(**{k: v for k, v in data.items() if k != "id"})
-    group = GroupService.update_group(db, group_id, update_data)
-    return ApiResponse.ok(data=group, message="更新成功", action="group.update")
+    result = GroupLogic.update_group(db, data.get("id"), data)
+    return ApiResponse.ok(data=result, message="更新成功", action="group.update")
 
 
 # ==================== 删除分组 ====================
@@ -66,6 +69,5 @@ async def delete_group(
     db: Session = Depends(get_db),
 ):
     """删除分组（软删除）"""
-    group_id = params.get("id")
-    GroupService.delete_group(db, group_id)
-    return ApiResponse.ok(message="删除成功", action="group.delete")
+    result = GroupLogic.delete_group(db, params.get("id"))
+    return ApiResponse.ok(message=result["message"], action="group.delete")
