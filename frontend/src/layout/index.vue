@@ -13,14 +13,12 @@
         text-color="#bfcbd9"
         active-text-color="#409eff"
       >
-        <template v-for="route in menuRoutes" :key="route.path">
-          <el-menu-item v-if="!route.meta?.hidden" :index="route.path">
-            <el-icon>
-              <component :is="route.meta?.icon || 'Menu'" />
-            </el-icon>
-            <template #title>{{ route.meta?.title || route.name }}</template>
-          </el-menu-item>
-        </template>
+        <el-menu-item index="/machines">
+          <el-icon>
+            <Monitor />
+          </el-icon>
+          <template #title>机器管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -57,7 +55,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Fold, Expand } from '@element-plus/icons-vue'
+import { Fold, Expand, Monitor } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,10 +64,6 @@ const isCollapse = ref(false)
 
 const activeMenu = computed(() => route.path)
 const currentRoute = computed(() => route)
-
-const menuRoutes = computed(() => {
-  return router.options.routes[0]?.children || []
-})
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value

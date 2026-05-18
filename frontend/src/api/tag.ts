@@ -1,4 +1,4 @@
-import { postAction } from './request'
+import { post } from './request'
 import type { Tag, TagCreate, TagUpdate } from '@/types/machine'
 
 const API_BASE = '/tags'
@@ -6,41 +6,41 @@ const API_BASE = '/tags'
 export const tagApi = {
   /**
    * 获取标签列表
-   * action: tag.list
+   * POST /api/v1/tags/list
    */
   getTags: (params?: { skip?: number; limit?: number }) => {
-    return postAction<Tag[]>(API_BASE, 'tag.list', params)
+    return post<Tag[]>(`${API_BASE}/list`, params)
   },
 
   /**
    * 获取标签详情
-   * action: tag.get
+   * POST /api/v1/tags/get
    */
   getTag: (id: number) => {
-    return postAction<Tag>(API_BASE, 'tag.get', { id })
+    return post<Tag>(`${API_BASE}/get`, { id })
   },
 
   /**
    * 创建标签
-   * action: tag.create
+   * POST /api/v1/tags/create
    */
   createTag: (data: TagCreate) => {
-    return postAction<Tag>(API_BASE, 'tag.create', data)
+    return post<Tag>(`${API_BASE}/create`, data)
   },
 
   /**
    * 更新标签
-   * action: tag.update
+   * POST /api/v1/tags/update
    */
   updateTag: (id: number, data: TagUpdate) => {
-    return postAction<Tag>(API_BASE, 'tag.update', { id, ...data })
+    return post<Tag>(`${API_BASE}/update`, { id, ...data })
   },
 
   /**
    * 删除标签
-   * action: tag.delete
+   * POST /api/v1/tags/delete
    */
   deleteTag: (id: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'tag.delete', { id })
+    return post<{ success: boolean; message: string }>(`${API_BASE}/delete`, { id })
   }
 }

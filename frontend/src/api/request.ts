@@ -19,19 +19,6 @@ const service: AxiosInstance = axios.create({
   }
 })
 
-// 请求拦截器：统一封装为 POST 请求格式
-service.interceptors.request.use(
-  (config) => {
-    // 所有请求都转为 POST
-    config.method = 'POST'
-    return config
-  },
-  (error) => {
-    console.error('Request error:', error)
-    return Promise.reject(error)
-  }
-)
-
 // 响应拦截器：处理统一响应格式
 service.interceptors.response.use(
   (response) => {
@@ -53,18 +40,10 @@ service.interceptors.response.use(
 /**
  * 统一 POST 请求封装
  * @param url API 地址
- * @param action 功能用途标识
- * @param data 业务数据
+ * @param data 请求数据
  */
-export async function postAction<T = any>(
-  url: string,
-  action: string,
-  data?: any
-): Promise<T> {
-  const response = await service.post<ApiResponse<T>>(url, {
-    action,
-    data
-  })
+export async function post<T = any>(url: string, data?: any): Promise<T> {
+  const response = await service.post<ApiResponse<T>>(url, data)
   return response.data.data as T
 }
 

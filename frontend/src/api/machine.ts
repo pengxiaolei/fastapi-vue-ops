@@ -1,4 +1,4 @@
-import { postAction } from './request'
+import { post } from './request'
 import type {
   Machine,
   MachineCreate,
@@ -14,7 +14,7 @@ const API_BASE = '/machines'
 export const machineApi = {
   /**
    * 获取机器列表
-   * action: machine.list
+   * POST /api/v1/machines/list
    */
   getMachines: (params?: {
     page?: number
@@ -23,71 +23,71 @@ export const machineApi = {
     status?: string
     environment?: string
   }) => {
-    return postAction<MachineListResponse>(API_BASE, 'machine.list', params)
+    return post<MachineListResponse>(`${API_BASE}/list`, params)
   },
 
   /**
    * 获取机器详情
-   * action: machine.get
+   * POST /api/v1/machines/get
    */
   getMachine: (id: number) => {
-    return postAction<Machine>(API_BASE, 'machine.get', { id })
+    return post<Machine>(`${API_BASE}/get`, { id })
   },
 
   /**
    * 创建机器
-   * action: machine.create
+   * POST /api/v1/machines/create
    */
   createMachine: (data: MachineCreate) => {
-    return postAction<Machine>(API_BASE, 'machine.create', data)
+    return post<Machine>(`${API_BASE}/create`, data)
   },
 
   /**
    * 更新机器
-   * action: machine.update
+   * POST /api/v1/machines/update
    */
   updateMachine: (id: number, data: MachineUpdate) => {
-    return postAction<Machine>(API_BASE, 'machine.update', { id, ...data })
+    return post<Machine>(`${API_BASE}/update`, { id, ...data })
   },
 
   /**
    * 删除机器
-   * action: machine.delete
+   * POST /api/v1/machines/delete
    */
   deleteMachine: (id: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'machine.delete', { id })
+    return post<{ success: boolean; message: string }>(`${API_BASE}/delete`, { id })
   },
 
   /**
    * 测试连接（不保存）
-   * action: machine.test_connection
+   * POST /api/v1/machines/test-connection
    */
   testConnection: (data: ConnectionTestRequest) => {
-    return postAction<ConnectionTestResponse>(API_BASE, 'machine.test_connection', data)
+    return post<ConnectionTestResponse>(`${API_BASE}/test-connection`, data)
   },
 
   /**
    * 测试已保存机器的连接
-   * action: machine.test_saved_connection
+   * POST /api/v1/machines/test-saved-connection
    */
   testMachineConnection: (id: number) => {
-    return postAction<ConnectionTestResponse>(API_BASE, 'machine.test_saved_connection', { id })
+    return post<ConnectionTestResponse>(`${API_BASE}/test-saved-connection`, { id })
   },
 
   /**
    * 刷新机器状态
-   * action: machine.refresh_status
+   * POST /api/v1/machines/refresh-status
    */
   refreshMachineStatus: (id: number) => {
-    return postAction<MachineStatusResponse>(API_BASE, 'machine.refresh_status', { id })
+    return post<MachineStatusResponse>(`${API_BASE}/refresh-status`, { id })
   },
 
   /**
    * 给机器添加标签
-   * action: machine.add_tag
+   * POST /api/v1/machines/add-tag
    */
   addTagToMachine: (machineId: number, tagId: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'machine.add_tag', {
+    return post<{ success: boolean; message: string }>(`${API_BASE}/add-tag`, {
       machine_id: machineId,
       tag_id: tagId
     })
@@ -95,10 +95,10 @@ export const machineApi = {
 
   /**
    * 移除机器标签
-   * action: machine.remove_tag
+   * POST /api/v1/machines/remove-tag
    */
   removeTagFromMachine: (machineId: number, tagId: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'machine.remove_tag', {
+    return post<{ success: boolean; message: string }>(`${API_BASE}/remove-tag`, {
       machine_id: machineId,
       tag_id: tagId
     })
@@ -106,10 +106,10 @@ export const machineApi = {
 
   /**
    * 将机器添加到分组
-   * action: machine.add_to_group
+   * POST /api/v1/machines/add-to-group
    */
   addMachineToGroup: (machineId: number, groupId: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'machine.add_to_group', {
+    return post<{ success: boolean; message: string }>(`${API_BASE}/add-to-group`, {
       machine_id: machineId,
       group_id: groupId
     })
@@ -117,10 +117,10 @@ export const machineApi = {
 
   /**
    * 将机器从分组移除
-   * action: machine.remove_from_group
+   * POST /api/v1/machines/remove-from-group
    */
   removeMachineFromGroup: (machineId: number, groupId: number) => {
-    return postAction<{ success: boolean; message: string }>(API_BASE, 'machine.remove_from_group', {
+    return post<{ success: boolean; message: string }>(`${API_BASE}/remove-from-group`, {
       machine_id: machineId,
       group_id: groupId
     })
