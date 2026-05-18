@@ -45,6 +45,17 @@
           <el-option label="测试" value="test" />
           <el-option label="生产" value="prod" />
         </el-select>
+        <el-select
+          v-model="searchForm.sortBy"
+          placeholder="排序方式"
+          style="width: 140px"
+          @change="loadMachines"
+        >
+          <el-option label="创建时间 ↓" value="created_at_desc" />
+          <el-option label="创建时间 ↑" value="created_at_asc" />
+          <el-option label="主机名称" value="hostname" />
+          <el-option label="状态" value="status" />
+        </el-select>
         <el-button type="primary" @click="loadMachines">
           <el-icon><Search /></el-icon>
           搜索
@@ -57,8 +68,17 @@
         :data="machineList"
         style="width: 100%"
         @selection-change="handleSelectionChange"
+        stripe
+        border
       >
         <el-table-column type="selection" width="55" />
+        <el-table-column type="index" label="序号" width="60" align="center">
+          <template #default="{ $index }">
+            <span style="color: #909399; font-weight: 500;">
+              {{ (pagination.page - 1) * pagination.page_size + $index + 1 }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="机器名称" min-width="120" />
         <el-table-column prop="hostname" label="主机地址" width="150" />
         <el-table-column prop="port" label="端口" width="80" />
@@ -110,9 +130,19 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="160" sortable>
+          <template #default="{ row }">
+            <div style="color: #606266; font-size: 12px;">
+              {{ formatDateTime(row.created_at) }}
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="last_heartbeat" label="最后心跳" width="160">
           <template #default="{ row }">
-            {{ row.last_heartbeat ? formatDate(row.last_heartbeat) : '-' }}
+            <div v-if="row.last_heartbeat" style="color: #67c23a; font-size: 12px;">
+              {{ formatDateTime(row.last_heartbeat) }}
+            </div>
+            <span v-else style="color: #909399; font-size: 12px;">从未连接</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
@@ -176,7 +206,8 @@ const currentMachine = ref<Machine | null>(null)
 const searchForm = reactive({
   keyword: '',
   status: '',
-  environment: ''
+  environment: '',
+  sortBy: 'created_at_desc'  // 默认按创建时间倒序
 })
 
 const pagination = reactive({
@@ -187,7 +218,7 @@ const pagination = reactive({
 
 const loadMachines = async () => {
   loading.value = true
-  console.log('🔄 开始加载机器列表...')
+  console.log('🔄 开始加载机器列表，排序方式:', searchForm.sortBy)
   try {
     const params = {
       page: pagination.page,
@@ -197,10 +228,39 @@ const loadMachines = async () => {
       environment: searchForm.environment || undefined
     }
     const res = await machineApi.getMachines(params)
-    console.log('✅ 机器列表加载成功:', res)
-    machineList.value = res.data
-    pagination.total = res.total
-    ElMessage.success(`加载成功，共 ${res.total} 台机器`)
+    console.log('✅ API返回数据结构:', res)
+    console.log('✅ 返回字段:', Object.keys(res))
+
+    // API返回结构: {total, page, page_size, total_pages, data: [...]}
+    const machineData = res.data || []
+    const total = res.total || 0
+
+    console.log('✅ 解析结果 - 总数:', total, '机器数:', machineData.length)
+
+    // 前端排序处理
+    let sortedData = [...machineData]
+    switch (searchForm.sortBy) {
+      case 'created_at_desc':
+        // 按创建时间倒序（最新在前）
+        sortedData.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        break
+      case 'created_at_asc':
+        // 按创建时间正序（最早在前）
+        sortedData.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        break
+      case 'hostname':
+        // 按主机名称排序
+        sortedData.sort((a, b) => a.hostname.localeCompare(b.hostname))
+        break
+      case 'status':
+        // 按状态排序
+        sortedData.sort((a, b) => a.status.localeCompare(b.status))
+        break
+    }
+
+    machineList.value = sortedData
+    pagination.total = total
+    ElMessage.success(`加载成功，共 ${total} 台机器`)
   } catch (error) {
     console.error('❌ 机器列表加载失败:', error)
     ElMessage.error('加载机器列表失败')
@@ -213,6 +273,7 @@ const resetSearch = () => {
   searchForm.keyword = ''
   searchForm.status = ''
   searchForm.environment = ''
+  searchForm.sortBy = 'created_at_desc'
   pagination.page = 1
   loadMachines()
 }
@@ -318,6 +379,38 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
+// 优化的日期时间格式化函数
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+
+  // 小于1小时
+  if (diff < 60 * 60 * 1000) {
+    const mins = Math.floor(diff / (60 * 1000))
+    return mins <= 0 ? '刚刚' : `${mins}分钟前`
+  }
+  // 小于1天
+  if (diff < 24 * 60 * 60 * 1000) {
+    const hours = Math.floor(diff / (60 * 60 * 1000))
+    return `${hours}小时前`
+  }
+  // 小于7天
+  if (diff < 7 * 24 * 60 * 60 * 1000) {
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000))
+    return `${days}天前`
+  }
+  // 超过7天显示完整日期
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
 onMounted(() => {
   console.log('🚀 机器管理页面已加载，开始调用API获取机器列表...')
   loadMachines()
@@ -335,9 +428,22 @@ onMounted(() => {
 
   .search-bar {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    align-items: center;
+    padding: 15px;
+    background: #f5f7fa;
+    border-radius: 8px;
+
+    .el-input,
+    .el-select {
+      flex-shrink: 0;
+    }
+
+    .el-button {
+      margin-left: auto;
+    }
   }
 
   .resource-item {

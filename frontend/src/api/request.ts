@@ -35,12 +35,13 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response) => {
     const res: ApiResponse = response.data
-    console.log(`📥 [API 响应] ${response.config.url}`, res)
+    console.log(`📥 [API 响应原始数据] ${response.config.url}`, res)
     if (!res.success) {
       ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message))
     }
-    return res
+    // 返回完整的 axios response 对象，保持结构一致
+    return response
   },
   (error) => {
     console.error('❌ [API 响应错误]', error)
@@ -57,6 +58,7 @@ service.interceptors.response.use(
  */
 export async function post<T = any>(url: string, data?: any): Promise<T> {
   const response = await service.post<ApiResponse<T>>(url, data)
+  console.log('📨 post 函数返回:', response.data.data)
   return response.data.data as T
 }
 
