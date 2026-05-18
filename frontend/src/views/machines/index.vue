@@ -4,10 +4,16 @@
       <template #header>
         <div class="card-header">
           <span>机器管理</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>
-            新增机器
-          </el-button>
+          <div style="display: flex; gap: 10px;">
+            <el-button type="success" @click="loadMachines">
+              <el-icon><Refresh /></el-icon>
+              刷新列表（手动触发API）
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>
+              新增机器
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -155,7 +161,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import { machineApi } from '@/api/machine'
 import type { Machine, MachineStatus } from '@/types/machine'
 import MachineForm from './components/MachineForm.vue'
@@ -313,7 +319,9 @@ const formatDate = (dateStr: string) => {
 }
 
 onMounted(() => {
+  console.log('🚀 机器管理页面已加载，开始调用API获取机器列表...')
   loadMachines()
+  console.log('✅ API调用已触发，请在Network面板查看请求')
 })
 </script>
 

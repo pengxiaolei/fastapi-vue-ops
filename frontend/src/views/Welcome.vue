@@ -56,6 +56,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
 import { Monitor, Connection, DataLine, FolderOpened, Setting, Star } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -63,6 +64,12 @@ const router = useRouter()
 const goToPage = (path: string) => {
   router.push(path)
 }
+
+// 页面加载后自动跳转到机器管理
+onMounted(() => {
+  console.log('🏠 欢迎页面已加载，自动跳转到机器管理')
+  router.push('/machines')
+})
 </script>
 
 <style scoped lang="scss">
