@@ -19,10 +19,23 @@ const service: AxiosInstance = axios.create({
   }
 })
 
+// 请求拦截器：添加调试日志
+service.interceptors.request.use(
+  (config) => {
+    console.log(`📤 [API 请求] ${config.method?.toUpperCase()} ${config.url}`, config.data)
+    return config
+  },
+  (error) => {
+    console.error('❌ [API 请求错误]', error)
+    return Promise.reject(error)
+  }
+)
+
 // 响应拦截器：处理统一响应格式
 service.interceptors.response.use(
   (response) => {
     const res: ApiResponse = response.data
+    console.log(`📥 [API 响应] ${response.config.url}`, res)
     if (!res.success) {
       ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message))
@@ -30,7 +43,7 @@ service.interceptors.response.use(
     return res
   },
   (error) => {
-    console.error('Response error:', error)
+    console.error('❌ [API 响应错误]', error)
     const message = error.response?.data?.detail || error.message || '请求失败'
     ElMessage.error(message)
     return Promise.reject(error)

@@ -1,12 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import Welcome from '@/views/Welcome.vue'
 import Main from '@/views/Main.vue'
 
 const routes: RouteRecordRaw[] = [
+  // 欢迎页面 - 首页
+  {
+    path: '/',
+    name: 'Welcome',
+    component: Welcome,
+    meta: { title: '欢迎' }
+  },
+  // 主界面 - 带侧边栏
   {
     path: '/',
     component: Main,
-    redirect: '/machines',
     children: [
       {
         path: 'machines',
@@ -45,6 +53,16 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 页面标题
+router.beforeEach((to, from, next) => {
+  if (to.meta.title) {
+    document.title = `${to.meta.title} - DevOps 运维管理平台`
+  } else {
+    document.title = 'DevOps 运维管理平台'
+  }
+  next()
 })
 
 export default router

@@ -1,13 +1,6 @@
-export enum AuthType {
-  PASSWORD = 'password',
-  KEY = 'key'
-}
+export type AuthType = 'password' | 'key'
 
-export enum MachineStatus {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-  MAINTENANCE = 'maintenance'
-}
+export type MachineStatus = 'online' | 'offline' | 'maintenance'
 
 export interface Machine {
   id: number
@@ -131,3 +124,5 @@ export interface PaginatedResponse<T> {
   total_pages: number
   data: T[]
 }
+
+export type MachineListResponse = PaginatedResponse<Machine>

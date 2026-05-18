@@ -93,8 +93,8 @@ const loadStats = async () => {
   try {
     const res = await machineApi.getMachines({ page: 1, page_size: 1000 })
     stats.value.machineCount = res.total
-    stats.value.onlineCount = res.data.filter((m: any) => m.status === 'online'
-    stats.value.offlineCount = res.data.filter((m: any) => m.status === 'offline'
+    stats.value.onlineCount = res.data.filter((m: any) => m.status === 'online').length
+    stats.value.offlineCount = res.data.filter((m: any) => m.status === 'offline').length
   } catch (error) {
     console.error('加载机器统计失败:', error)
   }

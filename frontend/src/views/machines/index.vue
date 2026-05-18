@@ -181,17 +181,22 @@ const pagination = reactive({
 
 const loadMachines = async () => {
   loading.value = true
+  console.log('🔄 开始加载机器列表...')
   try {
-    const res = await machineApi.getMachines({
+    const params = {
       page: pagination.page,
       page_size: pagination.page_size,
       keyword: searchForm.keyword || undefined,
       status: searchForm.status || undefined,
       environment: searchForm.environment || undefined
-    })
+    }
+    const res = await machineApi.getMachines(params)
+    console.log('✅ 机器列表加载成功:', res)
     machineList.value = res.data
     pagination.total = res.total
+    ElMessage.success(`加载成功，共 ${res.total} 台机器`)
   } catch (error) {
+    console.error('❌ 机器列表加载失败:', error)
     ElMessage.error('加载机器列表失败')
   } finally {
     loading.value = false

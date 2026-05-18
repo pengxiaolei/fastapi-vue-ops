@@ -174,6 +174,22 @@ const rules: FormRules = {
   ]
 }
 
+const resetForm = () => {
+  Object.assign(form, {
+    name: '',
+    hostname: '',
+    port: 22,
+    username: '',
+    auth_type: 'password' as AuthType,
+    password: '',
+    private_key: '',
+    os_type: '',
+    environment: '',
+    description: ''
+  })
+  formRef.value?.resetFields()
+}
+
 watch(
   () => props.machine,
   (machine) => {
@@ -197,22 +213,6 @@ watch(
   },
   { immediate: true }
 )
-
-const resetForm = () => {
-  Object.assign(form, {
-    name: '',
-    hostname: '',
-    port: 22,
-    username: '',
-    auth_type: 'password' as AuthType,
-    password: '',
-    private_key: '',
-    os_type: '',
-    environment: '',
-    description: ''
-  })
-  formRef.value?.resetFields()
-}
 
 const testConnection = async () => {
   if (!form.hostname || !form.username) {
