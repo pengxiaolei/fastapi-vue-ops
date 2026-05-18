@@ -19,7 +19,17 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: env.VITE_PROXY_TARGET || 'http://localhost:8000',
-          changeOrigin: true
+          changeOrigin: true,
+          secure: false,
+          logLevel: 'debug',
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log(`🔀 代理转发: ${req.method} ${req.url} → ${options.target}${req.url}`)
+            })
+            proxy.on('error', (err, req, res) => {
+              console.error('❌ 代理错误:', err.message)
+            })
+          }
         }
       }
     },
